@@ -69,10 +69,10 @@ type HTTPMuxEntry struct {
 
 type HTTPMux interface {
 	ServeHTTP(w http.ResponseWriter, r *http.Request)
-	AddFunc(pipelineName string, entryAdding *HTTPMuxEntry) error
-	AddFuncs(pipelineName string, entriesAdding []*HTTPMuxEntry) error
-	DeleteFunc(pipelineName string, entryDeleting *HTTPMuxEntry)
-	DeleteFuncs(pipelineName string) []*HTTPMuxEntry
+	AddFunc(ctx pipelines.PipelineContext, entryAdding *HTTPMuxEntry) error
+	AddFuncs(ctx pipelines.PipelineContext, entriesAdding []*HTTPMuxEntry) error
+	DeleteFunc(ctx pipelines.PipelineContext, entryDeleting *HTTPMuxEntry)
+	DeleteFuncs(ctx pipelines.PipelineContext) []*HTTPMuxEntry
 }
 
 const (
