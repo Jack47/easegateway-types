@@ -1,6 +1,7 @@
 package plugins
 
 import (
+	"io"
 	"net/http"
 	"time"
 
@@ -47,7 +48,63 @@ type ConfigConstructor func() Config
 
 ////
 
-type HTTPHandler func(w http.ResponseWriter, r *http.Request, urlParams map[string]string, routeDuration time.Duration)
+type SizedReadCloser interface {
+	io.ReadCloser
+	// Size indicates the available bytes length of reader
+	// negative value means available bytes length unknown
+	Size() int64
+}
+
+type HTTPCtx interface {
+	RequestHeader() Header
+	ResponseHeader() Header
+	RemoteAddr() string
+	BodyReadCloser() SizedReadCloser
+	DumpRequest() (string, error)
+
+	// return nil if concrete type doesn't support CloseNotifier
+	CloseNotifier() http.CloseNotifier
+	SetStatusCode(statusCode int)
+	// SetContentLength() should be called before call Write()
+	// SetContentLength() after call Write() does't have any effect
+	SetContentLength(len int64)
+	Write(p []byte) (int, error)
+}
+
+type Header interface {
+	// Get methods
+	Proto() string
+	Method() string
+	Get(k string) string
+	Host() string
+	Scheme() string
+	// path (relative paths may omit leading slash)
+	// for example: "search" in "http://www.google.com:80/search?q=megaease#title
+	Path() string
+	// full url, for example: http://www.google.com?s=megaease#title
+	FullURI() string
+	QueryString() string
+	ContentLength() int64
+	// VisitAll calls f for each header.
+	VisitAll(f func(k, v string))
+
+	CopyTo(dst Header) error
+
+	// Set sets the given 'key: value' header.
+	Set(k, v string)
+
+	// Add adds the given 'key: value' header.
+	// Multiple headers with the same key may be added with this function.
+	// Use Set for setting a single header for the given key.
+	Add(k, v string)
+
+	// Set sets the given 'key: value' header.
+	SetContentLength(len int64)
+}
+
+type HTTPType int8
+
+type HTTPHandler func(ctx HTTPCtx, urlParams map[string]string, routeDuration time.Duration)
 
 type HTTPURLPattern struct {
 	Scheme   string
@@ -68,7 +125,7 @@ type HTTPMuxEntry struct {
 }
 
 type HTTPMux interface {
-	ServeHTTP(w http.ResponseWriter, r *http.Request)
+	ServeHTTP(ctx HTTPCtx)
 	AddFunc(ctx pipelines.PipelineContext, entryAdding *HTTPMuxEntry) error
 	AddFuncs(ctx pipelines.PipelineContext, entriesAdding []*HTTPMuxEntry) error
 	DeleteFunc(ctx pipelines.PipelineContext, entryDeleting *HTTPMuxEntry)
