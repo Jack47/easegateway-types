@@ -64,10 +64,21 @@ type HTTPCtx interface {
 
 	// return nil if concrete type doesn't support CloseNotifier
 	CloseNotifier() http.CloseNotifier
+
+	// SetStatusCode sends an HTTP response header with the provided
+	// status code.
+	//
+	// If SetStatusCode is not called explicitly, the first call to Write
+	// will trigger an implicit SetStatusCode(http.StatusOK).
+	// Thus explicit calls to SetStatusCode are mainly used to send
+	// error codes.
 	SetStatusCode(statusCode int)
-	// SetContentLength() should be called before call Write()
-	// SetContentLength() after call Write() does't have any effect
+
+	// SetContentLength should be called before calling SetStatusCode or Write.
+	// Otherwise it does't have any effect.
 	SetContentLength(len int64)
+
+	// Write writes the data to the connection as part of an HTTP reply.
 	Write(p []byte) (int, error)
 }
 
@@ -92,6 +103,9 @@ type Header interface {
 
 	// Set sets the given 'key: value' header.
 	Set(k, v string)
+
+	// Del deletes header with the given key.
+	Del(k string)
 
 	// Add adds the given 'key: value' header.
 	// Multiple headers with the same key may be added with this function.
